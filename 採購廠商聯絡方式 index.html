@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>採購廠商聯絡方式</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .tab-btn.active {
+      border-bottom: 3px solid #059669;
+      color: #059669;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+  <!-- 頂部主選單 -->
+  <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">📋</span>
+        <h1 class="text-xl font-bold tracking-wide">採購廠商聯絡方式</h1>
+      </div>
+      
+      <!-- 主功能切換按鈕 -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="navQueryBtn" onclick="switchMainView('query')" class="bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-sm font-semibold shadow hover:bg-emerald-900 transition flex items-center gap-1.5 border border-emerald-600">
+          <span>🔍</span> 廠商查詢
+        </button>
+        <button id="navSiteBtn" onclick="switchMainView('site')" class="bg-emerald-600 text-white px-3.5 py-2 rounded-lg text-sm font-semibold shadow hover:bg-emerald-500 transition flex items-center gap-1.5 border border-emerald-400">
+          <span>🏗️</span> 案場廠商查詢
+        </button>
+        <button id="navEditBtn" onclick="prepareCreateNew()" class="bg-emerald-600 text-white px-3.5 py-2 rounded-lg text-sm font-semibold shadow hover:bg-emerald-500 transition flex items-center gap-1.5 border border-emerald-400">
+          <span>➕</span> 建立 / 修改廠商
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-4 md:p-6">
+
+    <!-- ==================== 視圖 1：廠商條件查詢專區 ==================== -->
+    <section id="viewQuery" class="space-y-5">
+      <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+          <span>🔍</span> 採購廠商條件查詢
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">關鍵字搜尋 (代號/名稱/統編/電話/項目/網址/聯絡人/會計)</label>
+            <input type="text" id="queryKeyword" oninput="filterVendors()" placeholder="輸入關鍵字即時查詢..." 
+              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">廠商類別</label>
+            <select id="queryCategory" onchange="filterVendors()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">配合狀態</label>
+            <select id="queryStatus" onchange="filterVendors()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+              <option value="">全部狀態</option>
+              <option value="是">配合中</option>
+              <option value="否">已停止配合</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
+          <span id="resultCount">共 0 筆資料</span>
+          <div class="flex gap-2">
+            <button onclick="exportData()" class="hover:text-emerald-700 underline">匯出備份 (JSON)</button>
+            <span>|</span>
+            <label class="hover:text-emerald-700 underline cursor-pointer">
+              匯入備份 <input type="file" onchange="importData(event)" class="hidden">
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="queryResultGroups" class="space-y-6"></div>
+    </section>
+
+    <!-- ==================== 視圖 2：案場履歷查詢專區 ==================== -->
+    <section id="viewSite" class="hidden space-y-5">
+      <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h2 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+          <span>🏗️</span> 案場履歷與配合廠商反查
+        </h2>
+        <p class="text-xs text-slate-500 mb-4">輸入案場關鍵字，自動找出該工程配合過的各工種與廠商明細。</p>
+        
+        <div class="flex gap-3">
+          <div class="flex-1">
+            <input type="text" id="siteSearchInput" oninput="renderSiteQuery()" placeholder="🔍 輸入案場名稱關鍵字 (例如：活動中心、耐震、圖書館...)" 
+              class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+          <button onclick="document.getElementById('siteSearchInput').value=''; renderSiteQuery();" class="px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition">清空搜尋</button>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-100">
+          <span class="text-xs text-slate-400 mr-2">已有案場快捷選取：</span>
+          <div id="siteBadges" class="inline-flex flex-wrap gap-1.5 mt-1"></div>
+        </div>
+      </div>
+
+      <div id="siteResultContainer" class="space-y-4"></div>
+    </section>
+
+    <!-- ==================== 視圖 3：建立 / 修改廠商表單 ==================== -->
+    <section id="viewEdit" class="hidden">
+      <div class="bg-white p-5 md:p-7 rounded-2xl shadow-sm border border-slate-200">
+        
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-200">
+          <div>
+            <span id="formModeTag" class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">新增廠商</span>
+            <h2 id="formTitle" class="text-xl font-bold text-slate-800 mt-1">建立採購廠商資料</h2>
+          </div>
+          <button onclick="switchMainView('query')" class="text-sm text-slate-500 hover:text-slate-800">✕ 返回查詢列表</button>
+        </div>
+
+        <form id="vendorForm" onsubmit="saveVendor(event)">
+          
+          <!-- 主要識別資訊 -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-emerald-50 p-4 rounded-xl border border-emerald-100 mb-5">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">廠商代號 (可選可自填) *</label>
+              <input list="codeOptions" id="vCode" required onchange="handleCodeSelect(this.value)" placeholder="自動編號或選取..." 
+                class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+              <datalist id="codeOptions"></datalist>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">廠商名稱 *</label>
+              <input type="text" id="vName" required class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">統一編號</label>
+              <input type="text" id="vTaxId" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+            </div>
+            
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">廠商類別 (可選可自填)</label>
+              <input list="categoryOptions" id="vCategory" placeholder="輸入或選取類別..." 
+                class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+              <datalist id="categoryOptions"></datalist>
+            </div>
+
+            <div class="col-span-2 md:col-span-4">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">施工項目</label>
+              <input type="text" id="vWorkItems" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-sm" placeholder="例如：水電配管、工程險、鋼筋綁紮...">
+            </div>
+          </div>
+
+          <!-- 分頁切換鈕 -->
+          <div class="flex border-b border-slate-200 mb-4 text-sm overflow-x-auto">
+            <button type="button" onclick="switchSubTab('subtab-basic')" class="tab-btn active px-4 py-2 text-slate-500 whitespace-nowrap">基本資料</button>
+            <button type="button" onclick="switchSubTab('subtab-payment')" class="tab-btn px-4 py-2 text-slate-500 whitespace-nowrap">請款資訊</button>
+            <button type="button" onclick="switchSubTab('subtab-quote')" class="tab-btn px-4 py-2 text-slate-500 whitespace-nowrap">詢價內容</button>
+            <button type="button" onclick="switchSubTab('subtab-sites')" class="tab-btn px-4 py-2 text-slate-500 whitespace-nowrap">使用案場</button>
+          </div>
+
+          <!-- 分頁 1: 基本資料 -->
+          <div id="subtab-basic" class="subtab-content space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">廠商市話</label>
+                <input type="text" id="vTel" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">廠商傳真</label>
+                <input type="text" id="vFax" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">Line ID</label>
+                <input type="text" id="vLineId" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+              </div>
+            </div>
+
+            <!-- 聯絡人 1 -->
+            <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
+              <h4 class="text-xs font-bold text-slate-700">聯絡人 (1)</h4>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="text" id="c1Name" placeholder="姓名" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c1Title" placeholder="職稱" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c1Mobile" placeholder="手機" class="border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="text" id="c1Tel" placeholder="市話" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c1Ext" placeholder="分機" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c1LineName" placeholder="Line 名稱" class="border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+              <input type="text" id="c1Duty" placeholder="負責項目" class="w-full border border-slate-300 rounded px-2 py-1 text-xs">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                <input type="text" id="c1Email" placeholder="E-mail" class="w-full border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c1Address" placeholder="通訊地址" class="w-full border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+            </div>
+
+            <!-- 聯絡人 2 -->
+            <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
+              <h4 class="text-xs font-bold text-slate-700">聯絡人 (2)</h4>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="text" id="c2Name" placeholder="姓名" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c2Title" placeholder="職稱" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c2Mobile" placeholder="手機" class="border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="text" id="c2Tel" placeholder="市話" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c2Ext" placeholder="分機" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c2LineName" placeholder="Line 名稱" class="border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+              <input type="text" id="c2Duty" placeholder="負責項目" class="w-full border border-slate-300 rounded px-2 py-1 text-xs">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                <input type="text" id="c2Email" placeholder="E-mail" class="w-full border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c2Address" placeholder="通訊地址" class="w-full border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+            </div>
+
+            <!-- 聯絡人 3 -->
+            <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
+              <h4 class="text-xs font-bold text-slate-700">聯絡人 (3)</h4>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="text" id="c3Name" placeholder="姓名" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c3Title" placeholder="職稱" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c3Mobile" placeholder="手機" class="border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="text" id="c3Tel" placeholder="市話" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c3Ext" placeholder="分機" class="border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c3LineName" placeholder="Line 名稱" class="border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+              <input type="text" id="c3Duty" placeholder="負責項目" class="w-full border border-slate-300 rounded px-2 py-1 text-xs">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                <input type="text" id="c3Email" placeholder="E-mail" class="w-full border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="c3Address" placeholder="通訊地址" class="w-full border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+            </div>
+
+            <!-- 公司網址與取貨地址 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">公司網址</label>
+                <input type="text" id="vWebsite" placeholder="例如：www.example.com 或 https://..." class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">取貨地址</label>
+                <input type="text" id="vPickupAddress" placeholder="例如：台南市安平區安平路480號1樓" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+              </div>
+            </div>
+
+            <!-- 名片上傳與備註 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">名片圖檔 (自動壓縮防爆容量，點擊放大 🔍)</label>
+                <div class="border border-dashed border-slate-300 rounded-lg p-3 text-center flex flex-col items-center justify-center bg-slate-50 relative group">
+                  <input type="file" id="vCardInput" accept="image/*" class="text-xs mb-2" onchange="handleCardUpload(event)">
+                  <div class="relative cursor-pointer" onclick="openLightbox(currentCardBase64)" title="點擊放大檢視">
+                    <img id="vCardPreview" class="max-h-36 rounded shadow-sm hidden border hover:opacity-90 transition" alt="名片預覽">
+                    <div id="vCardHint" class="hidden absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <span>🔍 點擊放大</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="mb-2">
+                  <span class="text-xs font-semibold text-slate-600 mr-2">是否還在配合：</span>
+                  <label class="text-sm mr-4"><input type="radio" name="vActive" value="是" checked> 是</label>
+                  <label class="text-sm"><input type="radio" name="vActive" value="否"> 否</label>
+                </div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">備註說明</label>
+                <textarea id="vRemark" rows="4" class="w-full border border-slate-300 rounded p-2 text-sm" placeholder="輸入廠商評價、配合注意事項..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- 分頁 2: 請款資訊 (新增請款聯絡人區塊) -->
+          <div id="subtab-payment" class="subtab-content hidden space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">負責人</label>
+                <input type="text" id="pOwner" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">請款銀行代號</label>
+                <input type="text" id="pBankCode" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm" placeholder="例如：012">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">請款銀行名稱</label>
+                <input type="text" id="pBankName" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm" placeholder="例如：台北富邦銀行">
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">請款戶名</label>
+                <input type="text" id="pAccountName" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">請款帳號</label>
+                <input type="text" id="pAccountNumber" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-600 mb-1">營業地址</label>
+              <input type="text" id="pBizAddress" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-600 mb-1">發票地址</label>
+              <input type="text" id="pInvoiceAddress" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+            </div>
+
+            <!-- 請款聯絡人 (1) (例如：會計/出納) -->
+            <div class="bg-emerald-50/60 p-3.5 rounded-lg border border-emerald-200 space-y-2 mt-2">
+              <h4 class="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                <span>💼</span> 請款聯絡人 (1)（例如：負責會計 / 出納）
+              </h4>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="text" id="pc1Name" placeholder="姓名" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="pc1Title" placeholder="職稱 (如: 會計)" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="pc1Mobile" placeholder="手機" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="text" id="pc1Tel" placeholder="市話" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="pc1Ext" placeholder="分機" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="pc1LineName" placeholder="Line 名稱" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+              <input type="text" id="pc1Duty" placeholder="負責項目 (如: 請款核銷、發票開立)" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                <input type="text" id="pc1Email" placeholder="E-mail (請款寄發票用)" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+                <input type="text" id="pc1Address" placeholder="通訊地址" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+              </div>
+            </div>
+          </div>
+
+          <!-- 分頁 3: 詢價內容 -->
+          <div id="subtab-quote" class="subtab-content hidden">
+            <label class="block text-xs text-slate-600 mb-1">詢價與單價歷史紀錄</label>
+            <textarea id="vQuotes" rows="10" class="w-full border border-slate-300 rounded p-3 text-sm font-mono" placeholder="1. 2026/03/15 詢價 2.0mm 電線報價 $1,200/卷&#10;2. ..."></textarea>
+          </div>
+
+          <!-- 分頁 4: 使用案場 -->
+          <div id="subtab-sites" class="subtab-content hidden">
+            <label class="block text-xs text-slate-600 mb-1">曾承作之案場紀錄 (一行一個案場，方便案場系統反查)</label>
+            <textarea id="vSites" rows="10" class="w-full border border-slate-300 rounded p-3 text-sm font-mono" placeholder="1. 中西區南門里活動中心廁所修繕工程(泰安)&#10;2. 臺南市七股區圖書館耐震補強工程(泰安)&#10;3. ..."></textarea>
+          </div>
+
+          <!-- 動作按鈕列 -->
+          <div class="mt-6 pt-4 border-t border-slate-200 flex justify-between items-center">
+            <button type="button" id="deleteBtn" onclick="deleteCurrentVendor()" class="text-red-500 hover:text-red-700 text-sm hidden font-medium">刪除此廠商</button>
+            <div class="ml-auto flex gap-3">
+              <button type="button" onclick="switchMainView('query')" class="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">返回清單</button>
+              <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2 rounded-lg text-sm shadow">確認儲存</button>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 名片放大燈箱 (Lightbox Modal) -->
+  <div id="imageLightbox" onclick="closeLightbox()" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+    <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+      <button onclick="closeLightbox()" class="absolute -top-10 right-0 text-white text-2xl font-bold bg-black/50 hover:bg-black/80 rounded-full w-8 h-8 flex items-center justify-center">✕</button>
+      <img id="lightboxImg" src="" class="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain border-2 border-white/20 bg-white" onclick="event.stopPropagation()">
+      <p class="text-white/80 text-xs mt-2 font-medium">點擊任意空白處即可關閉</p>
+    </div>
+  </div>
+
+  <script>
+    localStorage.removeItem('vendor_categories');
+
+    let vendors = JSON.parse(localStorage.getItem('vendor_system_data')) || [];
+    let currentEditId = null;
+    let currentCardBase64 = "";
+
+    function formatUrl(url) {
+      if (!url) return '';
+      let cleanUrl = url.trim();
+      if (!/^https?:\/\//i.test(cleanUrl)) {
+        cleanUrl = 'https://' + cleanUrl;
+      }
+      return cleanUrl;
+    }
+
+    function openLightbox(imgSrc) {
+      if (!imgSrc) return;
+      const lightbox = document.getElementById('imageLightbox');
+      const lightboxImg = document.getElementById('lightboxImg');
+      lightboxImg.src = imgSrc;
+      lightbox.classList.remove('hidden');
+    }
+
+    function closeLightbox() {
+      const lightbox = document.getElementById('imageLightbox');
+      lightbox.classList.add('hidden');
+      document.getElementById('lightboxImg').src = "";
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+
+    function getNextVendorCode() {
+      if (vendors.length === 0) return '001';
+      let maxNum = 0;
+      vendors.forEach(v => {
+        if (v.code) {
+          const num = parseInt(v.code, 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      });
+      const nextNum = maxNum + 1;
+      return nextNum < 100 ? String(nextNum).padStart(3, '0') : String(nextNum);
+    }
+
+    function refreshCodeOptions() {
+      const datalist = document.getElementById('codeOptions');
+      datalist.innerHTML = vendors
+        .filter(v => v.code)
+        .map(v => `<option value="${v.code}">${v.name ? v.name : ''}</option>`)
+        .join('');
+    }
+
+    function handleCodeSelect(selectedCode) {
+      if (!selectedCode) return;
+      const matched = vendors.find(v => v.code === selectedCode.trim());
+      if (matched && matched.id !== currentEditId) {
+        loadVendorToEdit(matched.id);
+      }
+    }
+
+    function getActiveCategories() {
+      const cats = vendors.map(v => v.category?.trim()).filter(Boolean);
+      return Array.from(new Set(cats));
+    }
+
+    function refreshCategoryOptions() {
+      const activeCats = getActiveCategories();
+      
+      document.getElementById('categoryOptions').innerHTML = 
+        activeCats.map(cat => `<option value="${cat}">`).join('');
+
+      const select = document.getElementById('queryCategory');
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">全部類別</option>' + 
+        activeCats.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+      select.value = currentVal;
+    }
+
+    function renameCategory(oldCategoryName) {
+      const newCategoryName = prompt(`請輸入「${oldCategoryName}」要變更的新名稱：`, oldCategoryName);
+      if (!newCategoryName || newCategoryName.trim() === "" || newCategoryName.trim() === oldCategoryName) {
+        return;
+      }
+      
+      const cleanNewName = newCategoryName.trim();
+
+      let updatedCount = 0;
+      vendors.forEach(v => {
+        if (v.category === oldCategoryName) {
+          v.category = cleanNewName;
+          updatedCount++;
+        }
+      });
+
+      localStorage.setItem('vendor_system_data', JSON.stringify(vendors));
+
+      refreshCategoryOptions();
+      filterVendors();
+      alert(`已將「${oldCategoryName}」成功更名為「${cleanNewName}」（共更新 ${updatedCount} 筆廠商）！`);
+    }
+
+    function switchMainView(view) {
+      document.getElementById('viewQuery').classList.add('hidden');
+      document.getElementById('viewSite').classList.add('hidden');
+      document.getElementById('viewEdit').classList.add('hidden');
+
+      document.getElementById('navQueryBtn').classList.remove('bg-emerald-800');
+      document.getElementById('navSiteBtn').classList.remove('bg-emerald-800');
+      document.getElementById('navEditBtn').classList.remove('bg-emerald-800');
+
+      if (view === 'query') {
+        document.getElementById('viewQuery').classList.remove('hidden');
+        document.getElementById('navQueryBtn').classList.add('bg-emerald-800');
+        filterVendors();
+      } else if (view === 'site') {
+        document.getElementById('viewSite').classList.remove('hidden');
+        document.getElementById('navSiteBtn').classList.add('bg-emerald-800');
+        renderSiteQuery();
+      } else {
+        document.getElementById('viewEdit').classList.remove('hidden');
+        document.getElementById('navEditBtn').classList.add('bg-emerald-800');
+      }
+    }
+
+    function prepareCreateNew() {
+      currentEditId = null;
+      currentCardBase64 = "";
+      document.getElementById('vendorForm').reset();
+      document.getElementById('vCode').value = getNextVendorCode();
+      document.getElementById('formModeTag').innerText = "建立新廠商";
+      document.getElementById('formModeTag').className = "text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded";
+      document.getElementById('formTitle').innerText = "建立採購廠商資料";
+      document.getElementById('deleteBtn').classList.add('hidden');
+      document.getElementById('vCardPreview').classList.add('hidden');
+      document.getElementById('vCardHint').classList.add('hidden');
+      
+      refreshCodeOptions();
+      refreshCategoryOptions();
+      switchSubTab('subtab-basic');
+      switchMainView('edit');
+    }
+
+    function switchSubTab(tabId) {
+      document.querySelectorAll('.subtab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.remove('hidden');
+      const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (targetBtn) targetBtn.classList.add('active');
+    }
+
+    function handleCardUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const maxDim = 1000;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height *= maxDim / width;
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width *= maxDim / height;
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          currentCardBase64 = canvas.toDataURL('image/jpeg', 0.75);
+          
+          const previewImg = document.getElementById('vCardPreview');
+          previewImg.src = currentCardBase64;
+          previewImg.classList.remove('hidden');
+          document.getElementById('vCardHint').classList.remove('hidden');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function saveVendor(e) {
+      e.preventDefault();
+      const enteredCategory = document.getElementById('vCategory').value.trim();
+      const enteredCode = document.getElementById('vCode').value.trim();
+      const enteredName = document.getElementById('vName').value.trim();
+
+      if (!enteredCode || !enteredName) {
+        alert('錯誤：廠商代號與廠商名稱為必填欄位！');
+        return;
+      }
+
+      const isEditing = Boolean(currentEditId);
+
+      const vendorData = {
+        id: currentEditId || Date.now().toString(),
+        code: enteredCode,
+        name: enteredName,
+        taxId: document.getElementById('vTaxId').value.trim(),
+        category: enteredCategory,
+        workItems: document.getElementById('vWorkItems').value.trim(),
+        tel: document.getElementById('vTel').value.trim(),
+        fax: document.getElementById('vFax').value.trim(),
+        lineId: document.getElementById('vLineId').value.trim(),
+        c1: {
+          name: document.getElementById('c1Name').value.trim(),
+          title: document.getElementById('c1Title').value.trim(),
+          mobile: document.getElementById('c1Mobile').value.trim(),
+          tel: document.getElementById('c1Tel').value.trim(),
+          ext: document.getElementById('c1Ext').value.trim(),
+          lineName: document.getElementById('c1LineName').value.trim(),
+          email: document.getElementById('c1Email').value.trim(),
+          address: document.getElementById('c1Address').value.trim(),
+          duty: document.getElementById('c1Duty').value.trim(),
+        },
+        c2: {
+          name: document.getElementById('c2Name').value.trim(),
+          title: document.getElementById('c2Title').value.trim(),
+          mobile: document.getElementById('c2Mobile').value.trim(),
+          tel: document.getElementById('c2Tel').value.trim(),
+          ext: document.getElementById('c2Ext').value.trim(),
+          lineName: document.getElementById('c2LineName').value.trim(),
+          email: document.getElementById('c2Email').value.trim(),
+          address: document.getElementById('c2Address').value.trim(),
+          duty: document.getElementById('c2Duty').value.trim(),
+        },
+        c3: {
+          name: document.getElementById('c3Name').value.trim(),
+          title: document.getElementById('c3Title').value.trim(),
+          mobile: document.getElementById('c3Mobile').value.trim(),
+          tel: document.getElementById('c3Tel').value.trim(),
+          ext: document.getElementById('c3Ext').value.trim(),
+          lineName: document.getElementById('c3LineName').value.trim(),
+          email: document.getElementById('c3Email').value.trim(),
+          address: document.getElementById('c3Address').value.trim(),
+          duty: document.getElementById('c3Duty').value.trim(),
+        },
+        website: document.getElementById('vWebsite').value.trim(),
+        pickupAddress: document.getElementById('vPickupAddress').value.trim(),
+        cardImg: currentCardBase64,
+        isActive: document.querySelector('input[name="vActive"]:checked').value,
+        remark: document.getElementById('vRemark').value.trim(),
+        payment: {
+          owner: document.getElementById('pOwner').value.trim(),
+          bankCode: document.getElementById('pBankCode').value.trim(),
+          bankName: document.getElementById('pBankName').value.trim(),
+          accountName: document.getElementById('pAccountName').value.trim(),
+          accountNumber: document.getElementById('pAccountNumber').value.trim(),
+          bizAddress: document.getElementById('pBizAddress').value.trim(),
+          invoiceAddress: document.getElementById('pInvoiceAddress').value.trim(),
+          c1: {
+            name: document.getElementById('pc1Name').value.trim(),
+            title: document.getElementById('pc1Title').value.trim(),
+            mobile: document.getElementById('pc1Mobile').value.trim(),
+            tel: document.getElementById('pc1Tel').value.trim(),
+            ext: document.getElementById('pc1Ext').value.trim(),
+            lineName: document.getElementById('pc1LineName').value.trim(),
+            email: document.getElementById('pc1Email').value.trim(),
+            address: document.getElementById('pc1Address').value.trim(),
+            duty: document.getElementById('pc1Duty').value.trim(),
+          }
+        },
+        quotes: document.getElementById('vQuotes').value.trim(),
+        sites: document.getElementById('vSites').value.trim(),
+      };
+
+      try {
+        if (isEditing) {
+          const index = vendors.findIndex(v => v.id === currentEditId);
+          if (index !== -1) {
+            vendors[index] = vendorData;
+          } else {
+            throw new Error('找不到該筆資料，可能已被刪除');
+          }
+        } else {
+          vendors.unshift(vendorData);
+        }
+
+        localStorage.setItem('vendor_system_data', JSON.stringify(vendors));
+        refreshCategoryOptions();
+        refreshCodeOptions();
+
+        if (isEditing) {
+          alert('修改完成！');
+          document.getElementById('formTitle').innerText = `修改採購廠商：${vendorData.name}`;
+        } else {
+          alert('新增完成！');
+          prepareCreateNew();
+        }
+
+      } catch (err) {
+        alert('錯誤：' + (err.message || '儲存失敗，請檢查瀏覽器空間或資料是否正確。'));
+      }
+    }
+
+    function loadVendorToEdit(id) {
+      const v = vendors.find(item => item.id === id);
+      if (!v) return;
+
+      currentEditId = v.id;
+      document.getElementById('formModeTag').innerText = "正在修改";
+      document.getElementById('formModeTag').className = "text-xs bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded";
+      document.getElementById('formTitle').innerText = `修改採購廠商：${v.name}`;
+      document.getElementById('deleteBtn').classList.remove('hidden');
+
+      document.getElementById('vCode').value = v.code || '';
+      document.getElementById('vName').value = v.name || '';
+      document.getElementById('vTaxId').value = v.taxId || '';
+      document.getElementById('vCategory').value = v.category || '';
+      document.getElementById('vWorkItems').value = v.workItems || '';
+      document.getElementById('vTel').value = v.tel || '';
+      document.getElementById('vFax').value = v.fax || '';
+      document.getElementById('vLineId').value = v.lineId || '';
+
+      // 基本聯絡人 1~3
+      document.getElementById('c1Name').value = v.c1?.name || '';
+      document.getElementById('c1Title').value = v.c1?.title || '';
+      document.getElementById('c1Mobile').value = v.c1?.mobile || '';
+      document.getElementById('c1Tel').value = v.c1?.tel || '';
+      document.getElementById('c1Ext').value = v.c1?.ext || '';
+      document.getElementById('c1LineName').value = v.c1?.lineName || '';
+      document.getElementById('c1Email').value = v.c1?.email || '';
+      document.getElementById('c1Address').value = v.c1?.address || '';
+      document.getElementById('c1Duty').value = v.c1?.duty || '';
+
+      document.getElementById('c2Name').value = v.c2?.name || '';
+      document.getElementById('c2Title').value = v.c2?.title || '';
+      document.getElementById('c2Mobile').value = v.c2?.mobile || '';
+      document.getElementById('c2Tel').value = v.c2?.tel || '';
+      document.getElementById('c2Ext').value = v.c2?.ext || '';
+      document.getElementById('c2LineName').value = v.c2?.lineName || '';
+      document.getElementById('c2Email').value = v.c2?.email || '';
+      document.getElementById('c2Address').value = v.c2?.address || '';
+      document.getElementById('c2Duty').value = v.c2?.duty || '';
+
+      document.getElementById('c3Name').value = v.c3?.name || '';
+      document.getElementById('c3Title').value = v.c3?.title || '';
+      document.getElementById('c3Mobile').value = v.c3?.mobile || '';
+      document.getElementById('c3Tel').value = v.c3?.tel || '';
+      document.getElementById('c3Ext').value = v.c3?.ext || '';
+      document.getElementById('c3LineName').value = v.c3?.lineName || '';
+      document.getElementById('c3Email').value = v.c3?.email || '';
+      document.getElementById('c3Address').value = v.c3?.address || '';
+      document.getElementById('c3Duty').value = v.c3?.duty || '';
+
+      document.getElementById('vWebsite').value = v.website || '';
+      document.getElementById('vPickupAddress').value = v.pickupAddress || '';
+
+      currentCardBase64 = v.cardImg || "";
+      const img = document.getElementById('vCardPreview');
+      const hint = document.getElementById('vCardHint');
+      if (currentCardBase64) {
+        img.src = currentCardBase64;
+        img.classList.remove('hidden');
+        hint.classList.remove('hidden');
+      } else {
+        img.classList.add('hidden');
+        hint.classList.add('hidden');
+      }
+
+      const radios = document.querySelectorAll('input[name="vActive"]');
+      radios.forEach(r => r.checked = (r.value === (v.isActive || '是')));
+      document.getElementById('vRemark').value = v.remark || '';
+
+      // 請款資訊與請款聯絡人(1)
+      document.getElementById('pOwner').value = v.payment?.owner || '';
+      document.getElementById('pBankCode').value = v.payment?.bankCode || '';
+      document.getElementById('pBankName').value = v.payment?.bankName || '';
+      document.getElementById('pAccountName').value = v.payment?.accountName || '';
+      document.getElementById('pAccountNumber').value = v.payment?.accountNumber || '';
+      document.getElementById('pBizAddress').value = v.payment?.bizAddress || '';
+      document.getElementById('pInvoiceAddress').value = v.payment?.invoiceAddress || '';
+
+      document.getElementById('pc1Name').value = v.payment?.c1?.name || '';
+      document.getElementById('pc1Title').value = v.payment?.c1?.title || '';
+      document.getElementById('pc1Mobile').value = v.payment?.c1?.mobile || '';
+      document.getElementById('pc1Tel').value = v.payment?.c1?.tel || '';
+      document.getElementById('pc1Ext').value = v.payment?.c1?.ext || '';
+      document.getElementById('pc1LineName').value = v.payment?.c1?.lineName || '';
+      document.getElementById('pc1Email').value = v.payment?.c1?.email || '';
+      document.getElementById('pc1Address').value = v.payment?.c1?.address || '';
+      document.getElementById('pc1Duty').value = v.payment?.c1?.duty || '';
+
+      document.getElementById('vQuotes').value = v.quotes || '';
+      document.getElementById('vSites').value = v.sites || '';
+
+      refreshCodeOptions();
+      refreshCategoryOptions();
+      switchSubTab('subtab-basic');
+      switchMainView('edit');
+    }
+
+    function deleteCurrentVendor() {
+      if (!currentEditId) return;
+      if (confirm('確定要刪除這筆廠商資料嗎？此動作無法復原。')) {
+        vendors = vendors.filter(v => v.id !== currentEditId);
+        localStorage.setItem('vendor_system_data', JSON.stringify(vendors));
+        refreshCategoryOptions();
+        refreshCodeOptions();
+        alert('刪除完成！');
+        prepareCreateNew();
+      }
+    }
+
+    function filterVendors() {
+      const keyword = document.getElementById('queryKeyword').value.toLowerCase();
+      const category = document.getElementById('queryCategory').value;
+      const status = document.getElementById('queryStatus').value;
+
+      const filtered = vendors.filter(v => {
+        const matchKeyword = !keyword || 
+          (v.name && v.name.toLowerCase().includes(keyword)) ||
+          (v.code && v.code.toLowerCase().includes(keyword)) ||
+          (v.taxId && v.taxId.includes(keyword)) ||
+          (v.workItems && v.workItems.toLowerCase().includes(keyword)) ||
+          (v.tel && v.tel.includes(keyword)) ||
+          (v.website && v.website.toLowerCase().includes(keyword)) ||
+          (v.category && v.category.toLowerCase().includes(keyword)) ||
+          (v.c1?.name && v.c1.name.toLowerCase().includes(keyword)) ||
+          (v.c1?.mobile && v.c1.mobile.includes(keyword)) ||
+          (v.c2?.name && v.c2.name.toLowerCase().includes(keyword)) ||
+          (v.c3?.name && v.c3.name.toLowerCase().includes(keyword)) ||
+          (v.payment?.c1?.name && v.payment.c1.name.toLowerCase().includes(keyword)) ||
+          (v.payment?.c1?.mobile && v.payment.c1.mobile.includes(keyword));
+
+        const matchCategory = !category || v.category === category;
+        const matchStatus = !status || v.isActive === status;
+
+        return matchKeyword && matchCategory && matchStatus;
+      });
+
+      document.getElementById('resultCount').innerText = `共 ${filtered.length} 筆資料`;
+      const container = document.getElementById('queryResultGroups');
+      container.innerHTML = '';
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="bg-white p-12 text-center text-slate-400 rounded-2xl border border-slate-200 shadow-sm">查無相符的採購廠商資料</div>';
+        return;
+      }
+
+      const grouped = {};
+      filtered.forEach(v => {
+        const cat = v.category?.trim() || '未分類';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(v);
+      });
+
+      Object.keys(grouped).forEach(catName => {
+        const catVendors = grouped[catName];
+        const groupSection = document.createElement('div');
+        groupSection.className = "bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4";
+        
+        const header = document.createElement('div');
+        header.className = "flex justify-between items-center pb-3 border-b border-slate-100";
+        header.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-5 bg-emerald-600 rounded-full inline-block"></span>
+            <h3 class="font-bold text-slate-800 text-lg">${catName}</h3>
+            <span class="text-xs bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5 rounded-full border border-emerald-100">${catVendors.length} 家廠商</span>
+            ${catName !== '未分類' ? `
+              <button onclick="renameCategory('${catName}')" class="text-xs text-slate-400 hover:text-emerald-700 ml-1 px-2 py-0.5 rounded hover:bg-slate-100 transition flex items-center gap-1">
+                <span>✏️</span> 重新命名
+              </button>
+            ` : ''}
+          </div>
+        `;
+        groupSection.appendChild(header);
+
+        const grid = document.createElement('div');
+        grid.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
+
+        catVendors.forEach(v => {
+          const card = document.createElement('div');
+          card.className = "bg-slate-50/70 p-4 rounded-xl border border-slate-200/90 shadow-sm hover:shadow-md transition flex flex-col justify-between";
+          card.innerHTML = `
+            <div>
+              <div class="flex justify-between items-start">
+                <span class="text-xs bg-white text-slate-700 px-2 py-0.5 rounded font-mono font-semibold border border-slate-200">${v.code || '無代號'}</span>
+                <span class="text-xs font-bold ${v.isActive === '是' ? 'text-emerald-600 bg-emerald-100/60 px-2 py-0.5 rounded' : 'text-rose-500 bg-rose-100/60 px-2 py-0.5 rounded'}">
+                  ${v.isActive === '是' ? '● 配合中' : '✕ 已停止'}
+                </span>
+              </div>
+
+              <h4 class="font-bold text-base text-slate-800 mt-2">${v.name}</h4>
+              ${v.taxId ? `<p class="text-xs text-slate-500">統編：${v.taxId}</p>` : ''}
+              
+              <div class="mt-2 text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200/60">
+                <span class="font-semibold text-slate-700">施工項目：</span>${v.workItems || '尚未填寫'}
+              </div>
+
+              <div class="mt-3 space-y-1 text-xs text-slate-600">
+                ${v.tel ? `<p>📞 公司市話：<a href="tel:${v.tel}" class="text-emerald-600 font-medium">${v.tel}</a></p>` : ''}
+                ${v.website ? `<p>🌐 公司官網：<a href="${formatUrl(v.website)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline font-medium">${v.website} ↗</a></p>` : ''}
+                ${v.c1?.name ? `<p>👤 業務聯絡：${v.c1.name} ${v.c1.title ? `(${v.c1.title})` : ''} - <a href="tel:${v.c1.mobile}" class="text-emerald-600 font-medium">${v.c1.mobile || '無手機'}</a></p>` : ''}
+                ${v.payment?.c1?.name ? `<p>💼 請款會計：${v.payment.c1.name} ${v.payment.c1.title ? `(${v.payment.c1.title})` : ''} - <a href="tel:${v.payment.c1.mobile || v.payment.c1.tel}" class="text-emerald-600 font-medium">${v.payment.c1.mobile || v.payment.c1.tel || '無電話'}</a></p>` : ''}
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-200/60 flex justify-between items-center">
+              ${v.cardImg ? `<button onclick="openLightbox('${v.cardImg}')" class="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-1 font-medium underline">📇 查看名片 (放大)</button>` : `<span></span>`}
+              <button onclick="loadVendorToEdit('${v.id}')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium">
+                ✏️ 查看 / 修改
+              </button>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+
+        groupSection.appendChild(grid);
+        container.appendChild(groupSection);
+      });
+    }
+
+    function renderSiteQuery() {
+      const keyword = (document.getElementById('siteSearchInput')?.value || '').trim().toLowerCase();
+      const container = document.getElementById('siteResultContainer');
+      const badgesContainer = document.getElementById('siteBadges');
+      container.innerHTML = '';
+      badgesContainer.innerHTML = '';
+
+      const siteMap = {};
+
+      vendors.forEach(v => {
+        if (!v.sites) return;
+        const lines = v.sites.split('\n');
+        lines.forEach(line => {
+          let cleanLine = line.trim();
+          if (!cleanLine) return;
+          let siteTitle = cleanLine.replace(/^[\d\.\、\(\)\s\-]+/, '').trim();
+          if (!siteTitle) return;
+
+          if (!siteMap[cleanLine]) {
+            siteMap[cleanLine] = {
+              displayTitle: siteTitle,
+              fullText: cleanLine,
+              matchedVendors: []
+            };
+          }
+          siteMap[cleanLine].matchedVendors.push(v);
+        });
+      });
+
+      const allSiteKeys = Object.keys(siteMap);
+
+      allSiteKeys.slice(0, 12).forEach(key => {
+        const item = siteMap[key];
+        const badge = document.createElement('button');
+        badge.className = "text-xs bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 px-2.5 py-1 rounded-full transition border border-slate-200";
+        badge.innerText = item.displayTitle.length > 15 ? item.displayTitle.slice(0, 15) + '...' : item.displayTitle;
+        badge.onclick = () => {
+          document.getElementById('siteSearchInput').value = item.displayTitle;
+          renderSiteQuery();
+        };
+        badgesContainer.appendChild(badge);
+      });
+
+      const matchedKeys = allSiteKeys.filter(key => {
+        if (!keyword) return true;
+        return key.toLowerCase().includes(keyword);
+      });
+
+      if (matchedKeys.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white p-12 text-center text-slate-400 rounded-2xl border border-slate-200 shadow-sm">
+            <span class="text-3xl block mb-2">🔍</span>
+            查無包含「<span class="text-emerald-700 font-semibold">${keyword}</span>」的案場使用紀錄
+          </div>
+        `;
+        return;
+      }
+
+      matchedKeys.forEach(siteKey => {
+        const siteData = siteMap[siteKey];
+        const siteCard = document.createElement('div');
+        siteCard.className = "bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4";
+        
+        siteCard.innerHTML = `
+          <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">📍</span>
+              <h3 class="font-bold text-slate-800 text-lg">${siteData.displayTitle}</h3>
+              <span class="text-xs bg-blue-50 text-blue-700 font-semibold px-2.5 py-0.5 rounded-full border border-blue-100">使用 ${siteData.matchedVendors.length} 家廠商</span>
+            </div>
+          </div>
+        `;
+
+        const vendorGrid = document.createElement('div');
+        vendorGrid.className = "grid grid-cols-1 md:grid-cols-2 gap-3.5";
+
+        siteData.matchedVendors.forEach(v => {
+          const vBox = document.createElement('div');
+          vBox.className = "bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-emerald-300 transition flex flex-col justify-between";
+          vBox.innerHTML = `
+            <div>
+              <div class="flex justify-between items-center">
+                <span class="text-xs font-semibold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded">${v.category || '未分類'}</span>
+                <span class="text-xs font-mono text-slate-500 font-bold">${v.code || ''}</span>
+              </div>
+              <h4 class="font-bold text-base text-slate-800 mt-1.5">${v.name}</h4>
+              <p class="text-xs text-slate-600 mt-1"><span class="font-semibold text-slate-700">施作項目：</span>${v.workItems || '未備註'}</p>
+              
+              <div class="mt-2.5 pt-2 border-t border-slate-200/60 space-y-1 text-xs text-slate-600">
+                ${v.tel ? `<p>📞 市話：<a href="tel:${v.tel}" class="text-emerald-600 font-medium">${v.tel}</a></p>` : ''}
+                ${v.c1?.name ? `<p>👤 業務聯絡：${v.c1.name} (<a href="tel:${v.c1.mobile}" class="text-emerald-600">${v.c1.mobile || '無手機'}</a>)</p>` : ''}
+                ${v.payment?.c1?.name ? `<p>💼 請款會計：${v.payment.c1.name} (<a href="tel:${v.payment.c1.mobile || v.payment.c1.tel}" class="text-emerald-600">${v.payment.c1.mobile || v.payment.c1.tel || '無電話'}</a>)</p>` : ''}
+              </div>
+            </div>
+
+            <div class="mt-3 pt-2.5 border-t border-slate-200 flex justify-between items-center">
+              ${v.cardImg ? `<button onclick="openLightbox('${v.cardImg}')" class="text-xs text-emerald-600 hover:underline font-medium">📇 名片</button>` : `<span></span>`}
+              <button onclick="loadVendorToEdit('${v.id}')" class="text-xs bg-slate-800 hover:bg-slate-900 text-white px-3 py-1 rounded-lg transition font-medium">
+                ✏️ 查看完整資料
+              </button>
+            </div>
+          `;
+          vendorGrid.appendChild(vBox);
+        });
+
+        siteCard.appendChild(vendorGrid);
+        container.appendChild(siteCard);
+      });
+    }
+
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(vendors, null, 2));
+      const a = document.createElement('a');
+      a.href = dataStr;
+      a.download = `採購廠商聯絡方式_備份_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    function importData(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const imported = JSON.parse(evt.target.result);
+          if (Array.isArray(imported)) {
+            vendors = imported;
+          } else if (imported && imported.vendors) {
+            vendors = imported.vendors;
+          }
+          localStorage.setItem('vendor_system_data', JSON.stringify(vendors));
+          refreshCategoryOptions();
+          refreshCodeOptions();
+          alert(`成功匯入 ${vendors.length} 筆採購廠商資料！`);
+          filterVendors();
+        } catch(err) {
+          alert('匯入失敗，請確認檔案格式是否正確。');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // 初始化載入
+    refreshCategoryOptions();
+    refreshCodeOptions();
+    filterVendors();
+  </script>
+</body>
+</html>
